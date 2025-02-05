@@ -94,15 +94,23 @@
     (goto-char (point-min))
     (while (not (eobp))
       (when (dired-move-to-filename nil)
-        (let ((file (dired-get-filename 'relative 'noerror)))
+        (let ((file (dired-get-filename nil 'noerror))) ;; Full path
           (when file
-            (let ((icon (if (file-directory-p file)
-                            (nerd-icons-icon-for-dir file
-                                                     :face 'nerd-icons-dired-dir-face
-                                                     :v-adjust nerd-icons-dired-v-adjust)
+            (let ((icon (if ;; Avoid using `file-directory-p' as it will
+                            ;; cause remote access.
+                            (save-excursion (forward-line 0)
+                                            (looking-at-p dired-re-dir))
+                            (if (file-remote-p file)
+                                ;; Avoid file-*-p functions
+                                (nerd-icons-sucicon "nf-custom-folder_oct"
+                                                    :face 'nerd-icons-dired-dir-face
+                                                    :v-adjust nerd-icons-dired-v-adjust)
+                              (nerd-icons-icon-for-dir file
+                                                       :face 'nerd-icons-dired-dir-face
+                                                       :v-adjust nerd-icons-dired-v-adjust))
                           (nerd-icons-icon-for-file file :v-adjust nerd-icons-dired-v-adjust)))
                   (inhibit-read-only t))
-              (if (member file '("." ".."))
+              (if (string-match-p "\\(?:\\`\\|[/\\\\]\\)\\.\\.?\\'" file) ;; . or ..
                   (nerd-icons-dired--add-overlay (dired-move-to-filename) "  \t")
                 (nerd-icons-dired--add-overlay (dired-move-to-filename) (concat icon "\t")))))))
       (forward-line 1))))
