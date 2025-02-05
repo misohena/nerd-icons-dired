@@ -61,7 +61,9 @@
                  ;; Workaround for the issue where overlapping faces
                  ;; are not applied
                  ;; https://github.com/rainstormstudio/nerd-icons-dired/issues/1
-                 (propertize string 'display string))))
+                 (propertize string 'display string))
+    ;; Make sure to delete the icon when a file line is deleted.
+    (overlay-put ov 'evaporate t)))
 
 (defun nerd-icons-dired--overlays-in (beg end)
   "Get all nerd-icons-dired overlays between BEG to END."
