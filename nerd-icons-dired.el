@@ -76,15 +76,19 @@
   "Get nerd-icons-dired overlays at POS."
   (apply #'nerd-icons-dired--overlays-in `(,pos ,pos)))
 
-(defun nerd-icons-dired--remove-all-overlays ()
-  "Remove all `nerd-icons-dired' overlays."
+(defun nerd-icons-dired--remove-all-overlays-from-whole-buffer ()
+  "Remove all `nerd-icons-dired' overlays from the whole buffer."
   (save-restriction
     (widen)
-    (mapc #'delete-overlay
-          (nerd-icons-dired--overlays-in (point-min) (point-max)))))
+    (nerd-icons-dired--remove-all-overlays)))
+
+(defun nerd-icons-dired--remove-all-overlays ()
+  "Remove all `nerd-icons-dired' overlays within the narrowed region."
+  (mapc #'delete-overlay
+        (nerd-icons-dired--overlays-in (point-min) (point-max))))
 
 (defun nerd-icons-dired--refresh ()
-  "Display the icons of files in a Dired buffer."
+  "Display the icons of files within the narrowed region of the Dired buffer."
   (nerd-icons-dired--remove-all-overlays)
   (save-excursion
     (goto-char (point-min))
@@ -110,40 +114,22 @@
       (nerd-icons-dired--refresh))
     result)) ;; Return the result
 
+(defun nerd-icons-dired--after-readin-hook ()
+  (when nerd-icons-dired-mode
+    (nerd-icons-dired--refresh)))
+
 (defun nerd-icons-dired--setup ()
   "Setup `nerd-icons-dired'."
   (when (derived-mode-p 'dired-mode)
     (setq-local tab-width 1)
-    (advice-add 'dired-readin :around #'nerd-icons-dired--refresh-advice)
-    (advice-add 'dired-revert :around #'nerd-icons-dired--refresh-advice)
-    (advice-add 'dired-internal-do-deletions :around #'nerd-icons-dired--refresh-advice)
-    (advice-add 'dired-insert-subdir :around #'nerd-icons-dired--refresh-advice)
-    (advice-add 'dired-create-directory :around #'nerd-icons-dired--refresh-advice)
-    (advice-add 'dired-do-redisplay :around #'nerd-icons-dired--refresh-advice)
-    (advice-add 'dired-kill-subdir :around #'nerd-icons-dired--refresh-advice)
-    (advice-add 'dired-do-kill-lines :around #'nerd-icons-dired--refresh-advice)
-    (with-eval-after-load 'dired-narrow
-      (advice-add 'dired-narrow--internal :around #'nerd-icons-dired--refresh-advice))
-    (with-eval-after-load 'dired-subtree
-      (advice-add 'dired-subtree-toggle :around #'nerd-icons-dired--refresh-advice))
-    (with-eval-after-load 'wdired
-      (advice-add 'wdired-abort-changes :around #'nerd-icons-dired--refresh-advice))
+    (add-hook 'dired-after-readin-hook #'nerd-icons-dired--after-readin-hook nil t)
     (nerd-icons-dired--refresh)))
 
 (defun nerd-icons-dired--teardown ()
   "Functions used as advice when redisplaying buffer."
-  (advice-remove 'dired-readin #'nerd-icons-dired--refresh-advice)
-  (advice-remove 'dired-revert #'nerd-icons-dired--refresh-advice)
-  (advice-remove 'dired-internal-do-deletions #'nerd-icons-dired--refresh-advice)
-  (advice-remove 'dired-narrow--internal #'nerd-icons-dired--refresh-advice)
-  (advice-remove 'dired-subtree-toggle #'nerd-icons-dired--refresh-advice)
-  (advice-remove 'dired-insert-subdir #'nerd-icons-dired--refresh-advice)
-  (advice-remove 'dired-do-kill-lines #'nerd-icons-dired--refresh-advice)
-  (advice-remove 'dired-create-directory #'nerd-icons-dired--refresh-advice)
-  (advice-remove 'dired-do-redisplay #'nerd-icons-dired--refresh-advice)
-  (advice-remove 'dired-kill-subdir #'nerd-icons-dired--refresh-advice)
-  (advice-remove 'wdired-abort-changes #'nerd-icons-dired--refresh-advice)
-  (nerd-icons-dired--remove-all-overlays))
+  (kill-local-variable 'tab-width)
+  (remove-hook 'dired-after-readin-hook #'nerd-icons-dired--after-readin-hook t)
+  (nerd-icons-dired--remove-all-overlays-from-whole-buffer))
 
 ;;;###autoload
 (define-minor-mode nerd-icons-dired-mode
