@@ -51,6 +51,14 @@
   :group 'nerd-icons
   :type 'number)
 
+(defcustom nerd-icons-dired-max-lines 1000
+  "The maximum number of lines in the buffer in which icons will be displayed.
+Performance can be improved by hiding icons when there are a large
+number of files."
+  :group 'nerd-icons
+  :type '(choice (integer)
+                 (const :tag "No limit" nil)))
+
 (defvar nerd-icons-dired-mode)
 
 (defun nerd-icons-dired--add-overlay (pos string)
@@ -88,6 +96,13 @@
         (nerd-icons-dired--overlays-in (point-min) (point-max))))
 
 (defun nerd-icons-dired--refresh ()
+  (if (and nerd-icons-dired-max-lines
+           (> (line-number-at-pos (point-max) t) nerd-icons-dired-max-lines))
+      ;; If there are many files, it will be very slow, so disable icons.
+      (nerd-icons-dired--remove-all-overlays-from-whole-buffer)
+    (nerd-icons-dired--refresh--internal)))
+
+(defun nerd-icons-dired--refresh--internal ()
   "Display the icons of files within the narrowed region of the Dired buffer."
   (nerd-icons-dired--remove-all-overlays)
   (save-excursion
