@@ -59,6 +59,16 @@ number of files."
   :type '(choice (integer)
                  (const :tag "No limit" nil)))
 
+(defcustom nerd-icons-dired-string-after-icon
+  " " ;; (propertize " " 'font-lock-face '(:height 0.5))
+  "String inserted between the icon and the filename in `nerd-icons-dired'."
+  :group 'nerd-icons
+  :type `(choice (const :tag "Tab" "\t")
+                 (const :tag "Space" " ")
+                 (const :tag "Half Space"
+                        ,(propertize " " 'font-lock-face '(:height 0.5)))
+                 (string :tag "Any String")))
+
 (defvar nerd-icons-dired-mode)
 
 (defun nerd-icons-dired--add-overlay (pos string)
@@ -107,28 +117,43 @@ number of files."
   (nerd-icons-dired--remove-all-overlays)
   (save-excursion
     (goto-char (point-min))
-    (while (not (eobp))
-      (when (dired-move-to-filename nil)
-        (let ((file (dired-get-filename nil 'noerror))) ;; Full path
-          (when file
-            (let ((icon (if ;; Avoid using `file-directory-p' as it will
-                            ;; cause remote access.
-                            (save-excursion (forward-line 0)
-                                            (looking-at-p dired-re-dir))
-                            (if (file-remote-p file)
-                                ;; Avoid file-*-p functions
-                                (nerd-icons-sucicon "nf-custom-folder_oct"
-                                                    :face 'nerd-icons-dired-dir-face
-                                                    :v-adjust nerd-icons-dired-v-adjust)
-                              (nerd-icons-icon-for-dir file
-                                                       :face 'nerd-icons-dired-dir-face
-                                                       :v-adjust nerd-icons-dired-v-adjust))
-                          (nerd-icons-icon-for-file file :v-adjust nerd-icons-dired-v-adjust)))
-                  (inhibit-read-only t))
-              (if (string-match-p "\\(?:\\`\\|[/\\\\]\\)\\.\\.?\\'" file) ;; . or ..
-                  (nerd-icons-dired--add-overlay (dired-move-to-filename) "  \t")
-                (nerd-icons-dired--add-overlay (dired-move-to-filename) (concat icon "\t")))))))
-      (forward-line 1))))
+    (let ((inhibit-read-only t))
+      (while (not (eobp))
+        (when (dired-move-to-filename nil)
+          (let ((file (dired-get-filename nil 'noerror))) ;; Full path
+            (when file
+              (nerd-icons-dired--add-overlay
+               (point)
+               (concat (nerd-icons-dired--icon file)
+                       nerd-icons-dired-string-after-icon)))))
+        (forward-line 1)))))
+
+(defun nerd-icons-dired--icon (file)
+  (cond
+   ;; . or ..
+   ((member (file-name-nondirectory file) '("." ".."))
+    (nerd-icons-codicon
+     "nf-cod-blank"
+     :face 'nerd-icons-dired-dir-face
+     :v-adjust nerd-icons-dired-v-adjust))
+   ;; Directory
+   ;; (Note: Do not call `file-directory-p' as it may trigger remote access.)
+   ((save-excursion (forward-line 0)
+                    (looking-at-p dired-re-dir))
+    (if (file-remote-p file)
+        ;; Avoid file-*-p functions
+        (nerd-icons-sucicon
+         "nf-custom-folder_oct"
+         :face 'nerd-icons-dired-dir-face
+         :v-adjust nerd-icons-dired-v-adjust)
+      (nerd-icons-icon-for-dir
+       file
+       :face 'nerd-icons-dired-dir-face
+       :v-adjust nerd-icons-dired-v-adjust)))
+   ;; File
+   (t
+    (nerd-icons-icon-for-file
+     file :v-adjust nerd-icons-dired-v-adjust))))
 
 (defun nerd-icons-dired--refresh-advice (fn &rest args)
   "Advice function for FN with ARGS."
